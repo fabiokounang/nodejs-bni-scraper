@@ -1,8 +1,12 @@
 {
   "name": "nodejs-bni-scraper",
   "version": "1.0.1",
-  "description": "BNI Scraper with NodeJS (Education Purpose Only)",
+  "description": "BNI Scraper with NodeJS",
   "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fabiokounang/nodejs-bni-scraper.git"
+  },
   "scripts": {
     "dev": "nodemon index.js",
     "start": "node index.js"

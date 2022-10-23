@@ -22,5 +22,5 @@ console.log(mutation); // { status: true, data: { no_rek: '1234567xxxx', values:
 
 ```
 
-Hopefully you find this repo useful !
+Hopefully you find this useful !
 Any feedback ? Please open issue ! :D Thanks
