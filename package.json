@@ -1,0 +1,20 @@
+{
+  "name": "nodejs-bni-scraper",
+  "version": "1.0.1",
+  "description": "BNI Scraper with NodeJS (Education Purpose Only)",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon index.js",
+    "start": "node index.js"
+  },
+  "keywords": ["scrape", "bni", "bank"],
+  "author": "Fabio",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.1.2",
+    "cheerio": "^1.0.0-rc.12",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "express": "^4.18.2"
+  }
+}
