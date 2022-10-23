@@ -11,7 +11,7 @@ npm install nodejs-bni-scraper
 ## Usage
 
 ```
-const BNI = require('BNI');
+const BNI = require('nodejs-bni-scraper');
 
 // Get Balance
 const balance = await BNI.getBalance('username', 'password');
