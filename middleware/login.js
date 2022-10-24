@@ -1,6 +1,7 @@
 const axios = require("axios");
 const cheerio = require('cheerio');
 const headers = require("../helper/headers");
+const { host, origin, applicationUrlEncoded, welcomeBni, sessionOver, informasiSaldo, mutasiRekening } = require("../helper/variable");
 
 module.exports = async (username, password) => {
   try {
@@ -14,10 +15,10 @@ module.exports = async (username, password) => {
       method: 'GET',
       url: 'https://ibank.bni.co.id/MBAWeb/FMB',
       withCredentials: true,
-      "Host": "ibank.bni.co.id",
-      "Origin": "https://ibank.bni.co.id",
+      "Host": host,
+      "Origin": origin,
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': applicationUrlEncoded,
         ...headers
       }
     });
@@ -31,14 +32,14 @@ module.exports = async (username, password) => {
       url: urlLogin,
       withCredentials: true,
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': applicationUrlEncoded,
         ...headers
       }
     });
 
     const $login = cheerio.load(loginPage.data);
-    const form = $login('#form');
-    const urlSubmitLogin = form.attr('action');
+    const urlSubmitLogin = $login('#form').attr('action');
+    if (!urlSubmitLogin) throw new Error('Username / password wrong');
 
     // 4) submit login credential bni
     const responseLogin = await axios({
@@ -47,7 +48,7 @@ module.exports = async (username, password) => {
       withCredentials: true,
       headers: {
         ...headers,
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': applicationUrlEncoded,
         "Referer": urlLogin
       },
       data: {
@@ -79,8 +80,8 @@ module.exports = async (username, password) => {
       }
     });
 
-    if (responseLogin.data.includes('Selamat Datang di BNI Internet Banking')) throw new Error('Failed login, please check your username and password');
-    if (responseLogin.data.includes('Sesi Anda berakhir')) throw new Error('Your session is over, please try again in 5 minutes');
+    if (responseLogin.data.includes(welcomeBni)) throw new Error('Failed login, please check your username and password');
+    if (responseLogin.data.includes(sessionOver)) throw new Error('Your session is over, please try again in 5 minutes');
     
     const $loginRes = cheerio.load(responseLogin.data);
     let referer = $loginRes('#form').attr('action'); // dipakai untuk masuk ke halaman rekening dan logout
@@ -98,18 +99,18 @@ module.exports = async (username, password) => {
         withCredentials: true,
         headers: {
           ...headers,
-          "Host": "ibank.bni.co.id",
+          "Host": host,
           "Referer": referer
         }
       });
       
       const $mutasi = cheerio.load(responseRekeningPage.data);      
       $mutasi('#AccountMenuList_td').map((i, card) => {
-        if($mutasi(card).html().includes('INFORMASI SALDO')) {
+        if($mutasi(card).html().includes(informasiSaldo)) {
           balanceUrl = $mutasi(card).children('a').attr('href');
           mbparam = new URLSearchParams(balanceUrl).get('mbparam');
         }
-        if($mutasi(card).html().includes('MUTASI REKENING')) {
+        if($mutasi(card).html().includes(mutasiRekening)) {
           mutasiRekeningUrl = $mutasi(card).children('a').attr('href');
           mbparam = new URLSearchParams(mutasiRekeningUrl).get('mbparam');
         }

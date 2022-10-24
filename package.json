@@ -1,6 +1,6 @@
 {
   "name": "nodejs-bni-scraper",
-  "version": "1.0.3",
+  "version": "1.0.5",
   "description": "BNI Scraper with NodeJS",
   "main": "index.js",
   "repository": {
