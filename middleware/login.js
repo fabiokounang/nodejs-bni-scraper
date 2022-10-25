@@ -1,7 +1,8 @@
 const axios = require("axios");
 const cheerio = require('cheerio');
+
 const headers = require("../helper/headers");
-const { host, origin, applicationUrlEncoded, welcomeBni, sessionOver, informasiSaldo, mutasiRekening } = require("../helper/variable");
+const { host, origin, applicationUrlEncoded, welcomeBni, sessionOver, informasiSaldo, mutasiRekening, mobilePage, suspended, fiveMin } = require("../helper/variable");
 
 module.exports = async (username, password) => {
   try {
@@ -13,10 +14,10 @@ module.exports = async (username, password) => {
     // 2) get halaman utama bni
     const mainPage = await axios({
       method: 'GET',
-      url: 'https://ibank.bni.co.id/MBAWeb/FMB',
+      url: mobilePage,
       withCredentials: true,
-      "Host": host,
-      "Origin": origin,
+      Host: host,
+      Origin: origin,
       headers: {
         'Content-Type': applicationUrlEncoded,
         ...headers
@@ -82,40 +83,43 @@ module.exports = async (username, password) => {
 
     if (responseLogin.data.includes(welcomeBni)) throw new Error('Failed login, please check your username and password');
     if (responseLogin.data.includes(sessionOver)) throw new Error('Your session is over, please try again in 5 minutes');
-    
+    if (responseLogin.data.includes(suspended)) throw new Error('Your account is suspended (3 times miss password), please try to forget password');
+    if (responseLogin.data.includes(fiveMin)) throw new Error('Please try again in 5 minutes');
+
     const $loginRes = cheerio.load(responseLogin.data);
-    let referer = $loginRes('#form').attr('action'); // dipakai untuk masuk ke halaman rekening dan logout
+    const referer = $loginRes('#form').attr('action'); // dipakai untuk masuk ke halaman rekening dan logout
 
     const rekeningButton = $loginRes('#divindex2 > table > tbody > tr > td#MBMenuList_td > a');
     let urlRekening = rekeningButton.attr('href');
     let balanceUrl = null;
     let mutasiRekeningUrl = null;
     let mbparam = null;
-    if (rekeningButton) {
-      if (!urlRekening) throw new Error('Url rekening not found');
-      const responseRekeningPage = await axios({
-        method: 'GET',
-        url: urlRekening,
-        withCredentials: true,
-        headers: {
-          ...headers,
-          "Host": host,
-          "Referer": referer
-        }
-      });
-      
-      const $mutasi = cheerio.load(responseRekeningPage.data);      
-      $mutasi('#AccountMenuList_td').map((i, card) => {
-        if($mutasi(card).html().includes(informasiSaldo)) {
-          balanceUrl = $mutasi(card).children('a').attr('href');
-          mbparam = new URLSearchParams(balanceUrl).get('mbparam');
-        }
-        if($mutasi(card).html().includes(mutasiRekening)) {
-          mutasiRekeningUrl = $mutasi(card).children('a').attr('href');
-          mbparam = new URLSearchParams(mutasiRekeningUrl).get('mbparam');
-        }
-      });
-    }
+
+    if (!rekeningButton) throw new Error('Failed login, rekening menu not found');
+    if (!urlRekening) throw new Error('Failed login, rekening url not found');
+
+    const responseRekeningPage = await axios({
+      method: 'GET',
+      url: urlRekening,
+      withCredentials: true,
+      headers: {
+        ...headers,
+        "Host": host,
+        "Referer": referer
+      }
+    });
+    
+    const $mutasi = cheerio.load(responseRekeningPage.data);      
+    $mutasi('#AccountMenuList_td').map((i, card) => {
+      if($mutasi(card).html().includes(informasiSaldo)) {
+        balanceUrl = $mutasi(card).children('a').attr('href');
+        mbparam = new URLSearchParams(balanceUrl).get('mbparam');
+      }
+      if($mutasi(card).html().includes(mutasiRekening)) {
+        mutasiRekeningUrl = $mutasi(card).children('a').attr('href');
+        mbparam = new URLSearchParams(mutasiRekeningUrl).get('mbparam');
+      }
+    });
     
     return { 
       status: true, 

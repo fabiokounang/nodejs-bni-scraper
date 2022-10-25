@@ -1,6 +1,6 @@
 {
   "name": "nodejs-bni-scraper",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "BNI Scraper with NodeJS",
   "main": "index.js",
   "repository": {
@@ -11,7 +11,7 @@
     "dev": "nodemon index.js",
     "start": "node index.js"
   },
-  "keywords": ["scrape", "bni", "bank"],
+  "keywords": ["scrape", "bni", "bank", "cheerio", "axios"],
   "author": "Fabio",
   "license": "ISC",
   "dependencies": {

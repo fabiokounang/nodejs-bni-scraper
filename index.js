@@ -3,93 +3,98 @@ const cheerio = require('cheerio');
 
 const login = require("./middleware/login");
 const logout = require("./middleware/logout");
+
 const headers = require("./helper/headers");
 
 module.exports = class BNI {
   static async getBalance (username, password) {
-    const result = await login(username, password);
-    if (!result.status) throw new Error('Failed get balance');
+    try {
+      const result = await login(username, password);
+      if (!result.status) throw new Error('Failed get balance');
 
-    const responseBalance = await axios({
-      method: 'GET',
-      url: result.data.balanceUrl,
-      headers: {
-        "Host": "ibank.bni.co.id",
-        "Referer": result.data.urlRekening,
-        ...headers
+      const responseBalance = await axios({
+        method: 'GET',
+        url: result.data.balanceUrl,
+        headers: {
+          "Host": "ibank.bni.co.id",
+          "Referer": result.data.urlRekening,
+          ...headers
+        }
+      });
+      
+    
+      let $ = cheerio.load(responseBalance.data);
+      const urlPageBalance = $('#form').attr('action');
+      const objPageBalance = {
+        "Num_Field_Err": "Please enter digits only!",
+        "Mand_Field_Err": "Mandatory field is empty!",
+        "MAIN_ACCOUNT_TYPE": "OPR",
+        "AccountIDSelectRq": "Lanjut",
+        "AccountRequestType": "ViewBalance",
+        "mbparam": result.data.mbparam,
+        "uniqueURLStatus": "disabled",
+        "imc_service_page": "AccountTypeSelectRq",
+        "Alignment": "LEFT",
+        "page": "AccountTypeSelectRq",
+        "locale": "bh",
+        "PageName": "BalanceInqRq",
+        "serviceType": "Dynamic"
       }
-    });
-		
-  
-    let $ = cheerio.load(responseBalance.data);
-    const urlPageBalance = $('#form').attr('action');
-    const objPageBalance = {
-      "Num_Field_Err": "Please enter digits only!",
-      "Mand_Field_Err": "Mandatory field is empty!",
-      "MAIN_ACCOUNT_TYPE": "OPR",
-      "AccountIDSelectRq": "Lanjut",
-      "AccountRequestType": "ViewBalance",
-      "mbparam": result.data.mbparam,
-      "uniqueURLStatus": "disabled",
-      "imc_service_page": "AccountTypeSelectRq",
-      "Alignment": "LEFT",
-      "page": "AccountTypeSelectRq",
-      "locale": "bh",
-      "PageName": "BalanceInqRq",
-      "serviceType": "Dynamic"
-    }
-    const responsePageBalance = await axios({
-      url: urlPageBalance,
-      method: 'POST',
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Host": "ibank.bni.co.id",
-        "Referer": result.data.balanceUrl,
-        ...headers
-      },
-      data: objPageBalance
-    });
+      const responsePageBalance = await axios({
+        url: urlPageBalance,
+        method: 'POST',
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Host": "ibank.bni.co.id",
+          "Referer": result.data.balanceUrl,
+          ...headers
+        },
+        data: objPageBalance
+      });
 
-    const $pageBalance = cheerio.load(responsePageBalance.data);
-    const acc1 = $pageBalance('#ACC_1 #ACC_1_column1 #acc1_span2 #acc1').attr('value');
-    const opr = $pageBalance('#MAIN_ACCOUNT_TYPE').attr('value');
-    if (!acc1 || !opr) throw new Error('Failed get balance (acc / opr');
-    let prevUrl = $pageBalance('form').attr('action');
-    const objDetailBalance = {
-      Num_Field_Err: "Please enter digits only!",
-      Mand_Field_Err: "Mandatory field is empty!",
-      acc1: acc1,
-      BalInqRq: "Lanjut",
-      MAIN_ACCOUNT_TYPE: opr,
-      mbparam: result.data.mbparam,
-      uniqueURLStatus: "disabled",
-      imc_service_page: "AccountIDSelectRq",
-      Alignment: "LEFT",
-      page: "AccountIDSelectRq",
-      locale: "bh",
-      PageName: "AccountTypeSelectRq",
-      serviceType: "Dynamic"
-    }
-
-    const responseDetailBalance = await axios({
-      url: prevUrl,
-      method: 'POST',
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Host": "ibank.bni.co.id",
-        "Referer": urlPageBalance,
-        ...headers
-      },
-      data: objDetailBalance
-    });
-    const $balance = cheerio.load(responseDetailBalance.data);
-    const balance = $balance('#Row5_5_column2 #H').text();
-    await logout(result.data.referer, prevUrl, result.data.mbparam);
-    return {
-      status: result.status,
-      data: {
-        balance: balance && balance.includes('IDR') ? Number(balance.split('IDR')[1].split('.').join('').split(',')[0]) : 0
+      const $pageBalance = cheerio.load(responsePageBalance.data);
+      const acc1 = $pageBalance('#ACC_1 #ACC_1_column1 #acc1_span2 #acc1').attr('value');
+      const opr = $pageBalance('#MAIN_ACCOUNT_TYPE').attr('value');
+      if (!acc1 || !opr) throw new Error('Failed get balance (acc / opr');
+      let prevUrl = $pageBalance('form').attr('action');
+      const objDetailBalance = {
+        Num_Field_Err: "Please enter digits only!",
+        Mand_Field_Err: "Mandatory field is empty!",
+        acc1: acc1,
+        BalInqRq: "Lanjut",
+        MAIN_ACCOUNT_TYPE: opr,
+        mbparam: result.data.mbparam,
+        uniqueURLStatus: "disabled",
+        imc_service_page: "AccountIDSelectRq",
+        Alignment: "LEFT",
+        page: "AccountIDSelectRq",
+        locale: "bh",
+        PageName: "AccountTypeSelectRq",
+        serviceType: "Dynamic"
       }
+
+      const responseDetailBalance = await axios({
+        url: prevUrl,
+        method: 'POST',
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Host": "ibank.bni.co.id",
+          "Referer": urlPageBalance,
+          ...headers
+        },
+        data: objDetailBalance
+      });
+      const $balance = cheerio.load(responseDetailBalance.data);
+      const balance = $balance('#Row5_5_column2 #H').text();
+      await logout(result.data.referer, prevUrl, result.data.mbparam);
+      return {
+        status: result.status,
+        data: {
+          balance: balance && balance.includes('IDR') ? Number(balance.split('IDR')[1].split('.').join('').split(',')[0]) : 0
+        }
+      }
+    } catch (error) {
+      return { status: false, error: error.message }
     }
   }
 
